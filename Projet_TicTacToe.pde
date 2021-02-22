@@ -11,8 +11,8 @@ int[][] grid = new int[NB_CASE][NB_CASE];     // contains moves played  * 0 -> v
                                     {0,0,0}};     */
                                                 
                 
-boolean over = false;  // tells if the game is over or not
-boolean started = false;    
+boolean over = false;  // True when game is over, False else
+boolean started = false;     // True when the game started,  False else
 boolean menu;    // True when Menu open, else False
 boolean turn_choice_view;   // True when Turn Choice window is open, else False
 boolean ai_mode; // True when AI_Mode enabled, else False
@@ -21,11 +21,12 @@ boolean player1_choice;   // True when Player1 chooses to play with X,   False i
 boolean starting_turn = true;    // Player1 begins first when True,    Player2/AI begins when False,    switched after each game 
 boolean turn;   // turn = true -> Player 1 turn    ---      turn = false -> Player 2 turn
 
-boolean show_scores = true;
-boolean delay = false;
+boolean show_help = false;      //  True when Help activated,  False else
+boolean show_scores = true;   // Displays scores and turn when True, doesnt when False   --  Press 's' during a game to change it
+boolean ai_turn = false;      // True when AI turn to play, else False
 
 int p1wins, draws, p2wins;   // variables that will contains scores
-int ai_delay=1000;  // AI delay to play its turn - in milliseconds 
+int AI_DELAY=500;  // AI delay to play its turn - in milliseconds 
 
 HashMap<Integer, Integer> rewards = new HashMap<Integer, Integer>();    // will contain the rewards for the minimax function
 
@@ -37,12 +38,18 @@ void setup(){
   rewards.put(1, -10);    // reward = -10 when Player wins
   rewards.put(0, 0);      // reward = 0 when Tie
   
-  //updateGrid();
+  //open_turn_choice();
   open_menu();
 }
 
 
-void draw(){}
+void draw(){
+    if(ai_turn){
+        delay(AI_DELAY);
+        AI_Turn();
+        ai_turn = false;
+    }
+}
 
 /* ##################################   DRAWING FUNCTIONS   ###################################### */
 
@@ -88,8 +95,24 @@ void open_menu(){
 
 void open_turn_choice(){
   /* Function that draws the windows to let the player choose if he wants to starts to play with X or O */
-  fill(12, 13, 59);
+  
+  fill(0, 240);
+  noStroke();
   rect(0,0,width,height);
+  
+  // big title part
+        textSize(40);
+        PFont font = loadFont("Dubai-Bold-60.vlw");
+        textFont(font, 60);
+        fill(#A7F3FF);
+        //background(12, 13, 59);
+        text("TIC-TAC-TOE", width/2, height/8);
+  
+  //fill(#156F6E, 150);
+  strokeWeight(5);
+  stroke(255, 100);
+  noFill();
+  rect(width/9,height/3,7*width/9,height/2.5+40, 30);
   turn_choice_view = true;
 
   // text part
@@ -98,20 +121,23 @@ void open_turn_choice(){
     
         // big title part
         textSize(textSize);
-        PFont font = loadFont("SegoeUI-Italic-60.vlw");
-        textFont(font, 60);
-        fill(#FFEEAF);
-        background(12, 13, 59);
-        text("Player 1", width/2, height/4);
+        font = loadFont("SegoeUI-BoldItalic-60.vlw");
+        textFont(font, 45);
+        fill(#FFE374);
+        //background(12, 13, 59);
+        text("Player 1", width/2, height/3+45);
+        stroke(#FFE374,200);
+        strokeWeight(3);
+        line(width/2-textWidth("Player 1")/2, height/3+45+textSize/2, width/2+textWidth("Player 1")/2-5, height/3+45+textSize/2);
         
         // subtitles part
         textSize(textSize/1.5);
-        font = loadFont("SegoeUI-Italic-60.vlw");
-        textFont(font, 30);
-        fill(#FFC1C2, 200);
-        text("Press 'x' to play with X", width/2, height/2);
-        fill(#C1FFFE, 200);
-        text("Press 'o' to play with O", width/2, height/2+1.5*textSize);
+        font = loadFont("SegoeUI-27.vlw");
+        textFont(font, 27);
+        fill(#FFC1C2, 220);
+        text("Press 'x' to play with X", width/2, height/2+45);
+        fill(#C1FFFE, 220);
+        text("Press 'o' to play with O", width/2, height/2+1.2*textSize+45);
 
 }
 
@@ -138,13 +164,9 @@ void draw_grid(){
 
 void updateGrid(){
     /* Update the drawing following grid's state */
-    
-    for(int i=0; i<NB_CASE; i++){
-          for(int j=0; j<NB_CASE; j++){
-            print(grid[i][j]+" ");
-          }print("\n");}
-          print("\n\n\n");
+   
     draw_grid();
+
   
     int box_width = width/NB_CASE;
     int box_height = height/NB_CASE;
@@ -197,7 +219,24 @@ void updateGrid(){
       }
     }
     
+    
+    
+    // show Help is show_help is True
+    if(ai_mode){
+      if(show_help&&started&&(turn==player1_choice)){   // AI Mode
+          showHelp();
+      }
+    }
+    else{                              // 2 Players Mode
+      if(show_help&&started){      
+          showHelp();
+      }
+    }
+    
+    
+    
     if(show_scores){
+      
       // prints scores
       textAlign(CENTER, CENTER);
       PFont font = loadFont("SegoeUI-BoldItalic-15.vlw");
@@ -221,26 +260,25 @@ void updateGrid(){
         text("P2 wins : "+str(p2wins), 2*box_width+box_width/2, height*0.96);
         
       // prints actual turn
-      if(!ai_mode){
-        if(turn==player1_choice){
-          if(player1_choice)
-            fill(#FFC1C2, 180);     // pink color
-          else
-            fill(#C1FFFE, 180);     // blue color
-          text("Turn : P1", 2*box_width+box_width/2, height*0.04);
-        }
-        else{
-           if(!player1_choice)
-             fill(#FFC1C2, 180);     // pink color
-           else
-             fill(#C1FFFE, 180);     // blue color
-             
-           if(ai_mode)
-             text("Turn : AI", 2*box_width+box_width/2, height*0.04);
-           else
-             text("Turn : P2", 2*box_width+box_width/2, height*0.04);   
-        }
+      if(turn==player1_choice){
+        if(player1_choice)
+          fill(#FFC1C2, 180);     // pink color
+        else
+          fill(#C1FFFE, 180);     // blue color
+        text("Turn : P1", 2*box_width+box_width/2, height*0.04);
       }
+      else{
+         if(!player1_choice)
+           fill(#FFC1C2, 180);     // pink color
+         else
+           fill(#C1FFFE, 180);     // blue color
+           
+         if(ai_mode)
+           text("Turn : AI", 2*box_width+box_width/2, height*0.04);
+         else
+           text("Turn : P2", 2*box_width+box_width/2, height*0.04);   
+      }
+      
         
       font = loadFont("SegoeUI-30.vlw");
       textFont(font, 25);
@@ -249,10 +287,46 @@ void updateGrid(){
 }
 
 
+void showHelp(){
+  /* Function that helps the player by displaying the best move possible  ---  Executed when show_help is True */
+  
+  if(check_winner()==-1){
+        int[] bestPlayerMove = new int[2];
+        if(turn==!(player1_choice)&&!(ai_mode))
+            bestPlayerMove = getBestMove(2);
+        else
+            bestPlayerMove = getBestMove(1);
+        int i = bestPlayerMove[0];
+        int j = bestPlayerMove[1];
+        
+        int box_width = width/NB_CASE;
+        int box_height = height/NB_CASE;
+        
+        int padding = 60;
+        
+        if(turn){
+          // draw a cross
+          stroke(255, 60);        // cross color
+          strokeWeight(5);           // cross width
+          line(i*box_width+padding, j*box_height+padding, (i+1)*box_width-padding, (j+1)*box_height-padding);
+          line(i*box_width+padding, (j+1)*box_height-padding, (i+1)*box_width-padding, j*box_height+padding);
+        }
+        else{
+          // draw a circle
+          stroke(255,60);     // circle color
+          fill(12, 13, 59);
+          strokeWeight(5);      // circle width
+          circle(i*box_width+box_width/2, j*box_height+box_height/2, box_width-1.8*padding);
+        }
+  }
+}
+
+
 /* ##################################   PROCESSING FUNCTIONS   ###################################### */
 
 
 void initialize_grid(){
+  /* Function that initialize the grid with zeros */
   for(int i=0; i<NB_CASE; i++){
       for(int j=0; j<NB_CASE; j++){
           grid[i][j] = 0;
@@ -269,7 +343,10 @@ void start_2players_mode(){
     starting_turn = !starting_turn;     // change next game starter
     initialize_grid();
     updateGrid();
+    if(show_help)
+          showHelp();
 }
+
 
 void start_ai_mode(){
   /* Function that starts AI mode  ---  Executed when Player press 'A' in the menu after he chooses X or O*/
@@ -279,15 +356,12 @@ void start_ai_mode(){
     starting_turn = !starting_turn;
     initialize_grid();
     updateGrid();
-    if(turn == !player1_choice)
+    if(turn == !player1_choice){
       AI_Turn();
-}
-
-
-void pause(long x) {            
-  /* Function that stops the program for x milliseconds */
-  long start = millis();
-  while (millis() < start + x) { draw();}
+    }
+    
+    if(show_help)
+      showHelp();
 }
 
 
@@ -411,7 +485,7 @@ void mouseClicked() {
   /* Executed each time a click is made */
   
   // Find which box was clicked
-  if((!over)&&(started)){
+  if((!over)&&(started)&&(!ai_turn)){
     int box_width = width/NB_CASE;
     int box_height = height/NB_CASE;
     
@@ -435,17 +509,21 @@ void boxClicked(int x, int y){
           grid[x][y] = 2;
       
       turn = !turn;  // change turn
+      show_help = false;
       updateGrid();
       over = check_if_over();
       
+      
+      
       if((ai_mode)&&(!over)){   // make an AI move if AI mode enabled 
-        AI_Turn();
+        ai_turn=true;
       }
   }
 }
 
 void keyPressed(){
     /* Function executed when a keyboard key is pressed */
+    
     if(menu){      // Menu open
  
         if((key=='p')||(key=='P')){  // 'P' pressed
@@ -501,9 +579,15 @@ void keyPressed(){
         }
     }
     
-    if(started){
+    if(started&&!(over)){
         if((key=='s')||(key=='S')){
             show_scores = !show_scores;
+            updateGrid();
+        }
+        if((key=='h')||(key=='H')){
+            show_help = true;
+            if(ai_mode)
+              showHelp();
             updateGrid();
         }
     }
@@ -541,7 +625,13 @@ void AI_Turn(){
         over = check_if_over();     // check if game is over
 }
 
-void makeBestMove() {
+void makeBestMove(){
+  int[] bestMove = new int[2];
+  bestMove = getBestMove(2);
+  grid[bestMove[0]][bestMove[1]] = 2;      // make the best move
+}
+
+int[] getBestMove(int maximizer) {
   /* Function that searches and make the best move possible using minmax */
   // AI to make its turn
   int bestReward = (int) Double.NEGATIVE_INFINITY;      // initialize bestReward to -infinity
@@ -554,8 +644,8 @@ void makeBestMove() {
 
       // check if the box is empty
       if (grid[i][j] == 0) {
-        grid[i][j] = 2;                    // made this move to test it
-        int reward = minimax(false);        // get the reward of the made move
+        grid[i][j] = maximizer;                    // made this move to test it
+        int reward = minimax(false, maximizer);        // get the reward of the made move
         grid[i][j] = 0;                    // undo the move
         if (reward > bestReward) {           // store the max reward in bestReward and its position in bestMove
           bestReward = reward;
@@ -565,23 +655,34 @@ void makeBestMove() {
       }
      }
   }
-  grid[bestMove[0]][bestMove[1]] = 2;      // make the best move
+  return bestMove;
 }
 
 
-int minimax(boolean isMaximizing) {
+int minimax(boolean isMaximizing, int maximizer) {
   /* Function which executes minimax algorithm 
     Parameter : 
           * isMaximazing :   True when maximazing    ---    False when minimizing
+          * maximizer :    1  when Player 1 is maximzing & AI is minimizing     ----    2 when AI is maximizing & Player 1 is minimizing
     Return :
           Max reward when maximzing    ---    Min reward when minimizing
   */
-  
+
   // check if game over
   int winner = check_winner();   
-  if (winner != -1) {                // if game over
-    return rewards.get(winner);      // returns the reward of game result
+  if (winner != -1) {      // if game over
+    if(maximizer == 2)
+      return rewards.get(winner);      // returns the reward of game result
+    else
+      return -rewards.get(winner); 
   }
+  
+  int minimizer;
+  if(maximizer == 2)
+      minimizer=1;
+  else
+      minimizer=2;
+  
 
   if (isMaximizing) {
     // process Maximizing    ---    AI turn
@@ -592,8 +693,8 @@ int minimax(boolean isMaximizing) {
     for (int i = 0; i < NB_CASE; i++) {
       for (int j = 0; j < NB_CASE; j++) {
         if (grid[i][j] == 0) {       // check if the box is empty
-          grid[i][j] = 2;            // AI move
-          int reward = minimax(false);    // get reward of last move
+          grid[i][j] = maximizer;            // maximizer move
+          int reward = minimax(false, maximizer);    // get reward of last move
           grid[i][j] = 0;            // undo move
           maxReward = max(reward, maxReward);      // update maxReward
         }
@@ -612,8 +713,8 @@ int minimax(boolean isMaximizing) {
       for (int j = 0; j < NB_CASE; j++) {
         
         if (grid[i][j] == 0) {     // check if the box is empty
-          grid[i][j] = 1;          // Player move
-          int reward = minimax(true);    // get reward of last move
+          grid[i][j] = minimizer;          // minimizer move
+          int reward = minimax(true, maximizer);    // get reward of last move
           grid[i][j] = 0;          // undo move
           minReward = min(reward, minReward);     // update minReward
         }
