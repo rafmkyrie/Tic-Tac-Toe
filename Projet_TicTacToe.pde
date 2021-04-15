@@ -4,7 +4,7 @@
 
 final int NB_CASE = 3;       // Number of cases
   
-int[][] grid = new int[NB_CASE][NB_CASE];     // contains moves played  * 0 -> void  *  1 -> player1  *  2 -> player2
+int[][] grid = new int[NB_CASE][NB_CASE];     // contains moves played  * 0 -> void  *  1 -> player1  *  2 -> player2/AI
 
 /* Grid will look like this :      {{0,0,0},        
                                     {0,0,0}, 
@@ -632,7 +632,10 @@ void makeBestMove(){
 }
 
 int[] getBestMove(int maximizer) {
-  /* Function that searches and make the best move possible using minmax */
+  /* Function that searches and make the best move possible using minmax 
+          maximizer = 1 when searching best move for Player  ---    
+                      2 when searching best move for AI
+  */        
   // AI to make its turn
   int bestReward = (int) Double.NEGATIVE_INFINITY;      // initialize bestReward to -infinity
 
